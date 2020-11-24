@@ -1,0 +1,918 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+// ***********************
+// for debug
+#define DEBUGz
+#define NOP do{}while(0)
+
+#ifdef DEBUG
+#define TRACE(...) do{printf(__VA_ARGS__);fflush(stdout);}while(0)
+#define TRACECR do{printf("\n");fflush(stdout);}while(0)
+#else
+#define TRACE(...) NOP
+#define TRACECR NOP
+#endif
+
+#define PRINCR printf("\n")
+#define NOCR(strig) do{char *p;p=strchr(strig,'\n');if(p)*p='\0';}while(0)
+
+// for stdio
+#define INPUT(str) do{char *p;fgets(str,sizeof(str),stdin);p=strchr(str,'\n');if(p)*p='\0';}while(0)
+static char *getinput( char* str );
+
+// for readaility
+#define SWAP(type,a,b) do{type _c;_c=a;a=b;b=_c;}while(0)
+#define FLOOP(a,b) for(a=0;a<(b);++a)
+#define FLOOP1(a,b) for(a=1;a<=(b);++a)
+
+// ***********************
+/*!
+ * @brief	   stdioから空白区切りの単語を１つだけ読み取ってくる(可変長入力の場合)
+ * @param[out] str	読み取った単語の格納先
+ * @return	   読み取った単語へのアドレス(失敗時はNULL)
+ */
+static char *getinput( char* str )
+{
+	char c;
+	char *cp;
+	cp = &str[0];
+	c = fgetc(stdin);
+	while( c != EOF ) {
+		if( ( c == ' ')||( c == '\n') ) break;
+		*cp++ = c;
+		c = fgetc(stdin);
+	}
+	*cp = '\0';
+	return &str[0];
+}
+// ***********************
+// 個別リテラル
+#define INPBUF (128+2)
+// ***********************
+// 外部変数
+// ***********************
+// brunch node library
+#define TREE_LEFT 1
+#define TREE_RIGHT 2
+#define MAX_HEIGHT 99
+#define	keytype	int
+struct nodestruct {
+    keytype key;
+    char *data;
+    int	val;
+    struct nodestruct *left;
+	struct nodestruct *right;
+};
+typedef struct nodestruct  NODEDEF;
+
+// ***********************
+/*!
+ * @brief	   新規ノードを作成する
+ * @param[out]	dest   新規ノード。失敗したらNULLを返す。
+ * @param[in]	src    ノードの内容
+ * @return	   新規ノードのアドレス。失敗したら-1を返す。
+ */
+int	strcpy_malloc(char **dest, const char *src)
+{
+	*dest = (char *)malloc(strlen(src) + 1);
+	if(*dest == NULL){
+		fprintf(stderr, "ERROR: %s(%d line)\n", strerror(errno), __LINE__);
+		return(-1);
+	}
+
+	if(strcpy(*dest, src) == NULL){
+		fprintf(stderr, "ERROR: %s(%d line)\n", strerror(errno), __LINE__);
+		free(*dest);
+		*dest = NULL;
+		return(-1);
+	}
+
+	return(0);
+}
+// ***********************
+/*!
+ * @brief	   新規ノードを作成する
+ * @param[in]  key	 登録キー
+ * @param[in]  data  登録データ
+ * @return	   新規ノードのアドレス。失敗したらNULLを返す。
+ */
+NODEDEF *node_new(int key, const char *data)
+{
+	NODEDEF *node = (NODEDEF *)malloc(sizeof(NODEDEF));
+	if(node == NULL){
+		fprintf(stderr, "ERROR: %s(%d line)\n", strerror(errno), __LINE__);
+		return(NULL);
+	}
+
+	if(strcpy_malloc(&(node->data), data) != 0){
+		free(node);
+		return(NULL);
+	}
+	node->key	= key;
+	node->left	= NULL;
+	node->right = NULL;
+
+	return(node);
+}
+// ***********************
+/*!
+ * @brief		ノードを検索する
+ * @param[out]	root  木構造の根
+ * @param[in]	key   登録キー
+ * @return		ノードのアドレスを返す。存在しない場合には、検索ノード
+ *				が配置されるべきアドレス（現状でNULL）を返す。
+ */
+static NODEDEF **node_search(NODEDEF **root, int key)
+{
+	NODEDEF **node = root;
+
+	while(*node != NULL){
+		if(key == (*node)->key){	  // ノードを発見した
+			break;
+		}else if(key < (*node)->key){ // 左部分木に進む
+			node = &(*node)->left;
+		}else if(key > (*node)->key){ // 右部分木に進む
+			node = &(*node)->right;
+		}
+	}
+
+	return(node);
+}
+// ***********************
+/*!
+ * @brief		データを挿入する
+ * @param[out]	root  木構造の根
+ * @param[in]	key   登録キー
+ * @param[in]	data  登録データ
+ * @return		0	  success
+ * @return		-1	  failure
+ */
+int	bintree_insert(NODEDEF **root, int key, const char *data)
+{
+	NODEDEF **pos = root;
+	NODEDEF *new  = NULL;
+
+	// 挿入すべき場所を探す
+	pos = node_search(root, key);
+	if(*pos != NULL){
+		fprintf(stderr, "key[%d] is already exist in tree.\n", key);
+		return(-1);
+	}
+
+	// 新規ノードを追加する
+	new = node_new(key, data);
+	if(new == NULL) return(-1);
+	*pos = new;
+
+	return(0);
+}
+// ***********************
+/*!
+ * @brief	   ノードを解放する
+ * @param[in]  node   削除の開始ノード
+ */
+void	node_free(NODEDEF *node)
+{
+	if(node->data != NULL) free(node->data);
+	free(node);
+}
+// ***********************
+/*!
+ * @brief	   木構造のデータ全てを解放する
+ * @param[in]  node   削除の開始ノード
+ * @note	   帰りがけ順（後順：postorder）
+ */
+void	bintree_free(NODEDEF *node)
+{
+	if(node == NULL) return;
+	bintree_free(node->left);
+	bintree_free(node->right);
+	node_free(node);
+}
+// ***********************
+/*!
+ * @brief		データを検索する
+ * @param[out]	root  木構造の根
+ * @param[in]	key   登録キー
+ * @return		登録データを返す。失敗した場合にはNULLを返す。
+ * @note		行きがけ順（前順：preorder）
+ */
+char *bintree_search(NODEDEF *root, int key)
+{
+	NODEDEF *node = NULL;
+
+	node = root;
+	while(node != NULL){
+		if(key == node->key){
+			return(node->data);
+		}else if(key < node->key){ // 左部分木に進む
+			node = node->left;
+		}else if(key > node->key){ // 右部分木に進む
+			node = node->right;
+		}
+	}
+	return(NULL);
+}
+// ***********************
+/*!
+ * @brief		最小値のノードを木から取り外す
+ * @param[out]	node  探索開始点のノード
+ * @return		取り外したノード
+ */
+NODEDEF *remove_minimun_node(NODEDEF **node)
+{
+	NODEDEF *min = NULL;
+
+	// 最小値を探す
+	while((*node)->left != NULL){
+		node = &(*node)->left;
+	}
+	min = *node;
+
+	// 右部分木を以後の最小値ノードとする
+	*node = (*node)->right;
+	return(min);
+}
+// ***********************
+/*!
+ * @brief		データを削除する
+ * @param[out]	root  木構造の根
+ * @param[in]	key   登録キー
+ * @return		0	  success
+ * @return		-1	  failure
+ */
+int bintree_delete(NODEDEF **root, int key)
+{
+	NODEDEF *target = NULL;
+	NODEDEF **node	= NULL;
+
+	// 削除対象ノードを取得する
+	node = node_search(root, key);
+	if(*node == NULL){ // 対象キーのノードが存在しない場合
+		fprintf(stderr, "key[%d] not found.\n", key);
+		return(-1);
+	}
+
+	// 削除対象ノードのポインタを付け替える
+	target = *node;
+	if((target->right == NULL) && (target->left == NULL)){ // 葉の場合
+		*node = NULL;
+	}else if(target->left == NULL){   // 右の子ノードのみ存在する場合
+		*node = target->right;
+	}else if(target->right == NULL){  // 左の子ノードのみ存在する場合
+		*node = target->left;
+	}else{							  // 左右の子ノードが存在する場合
+		// 右部分木の最小値ノードを取得する
+		*node = remove_minimun_node(&target->right);
+		(*node)->right = target->right;
+		(*node)->left  = target->left;
+	}
+
+	// ノードを削除する
+	node_free(target);
+
+	return(0);
+}
+// ***********************
+/*!
+ * @brief		データ一覧を階層形式で表示する
+ * @param[out]	node  表示を開始する根
+ */
+void	bintree_print(NODEDEF *node)
+{
+	static int print_depth = 0;
+
+	printf("%*s", print_depth + 3, " - ");
+	printf("{%2d:\"%s\"}\n", node->key, node->data);
+
+	if(node->left != NULL){
+		print_depth++;
+		bintree_print(node->left);
+		print_depth--;
+	}
+	if(node->right != NULL){
+		print_depth++;
+		bintree_print(node->right);
+		print_depth--;
+	}
+}
+// ***********************
+/*!
+ * @brief			指定されたノードの高さを数える
+ * @param[in] node	ノードのアドレス
+ * @return			nodeを根とした木の高さ
+ */
+int getHeight(NODEDEF *node) {
+
+  int left_height;
+  int right_height;
+  int tree_height;
+
+  if (node == NULL) {
+	// nodeが無いなら高さは0
+	return 0;
+  }
+
+  // 左右の子を根とした木の高さを取得
+  left_height = getHeight(node->left);
+  right_height = getHeight(node->right);
+
+  // 大きい方に+1したものを木の高さとして返却
+  if (left_height > right_height) {
+	tree_height = left_height;
+  } else {
+	tree_height = right_height;
+  }
+
+  return tree_height + 1;
+}
+// ***********************
+/*!
+ * @brief nodeを根とする部分木を回転（左）
+ * @param[out]	 root	根のノードを指すアドレス
+ * @param[out]	 node	回転する部分木の根ノードを指すアドレス
+ * @param[out]	 parent   nodeの親ノードを指すアドレス
+ * @param[in]	 direction	 parentから見たnodeのある方向
+ * @return	 根のノードを指すアドレス
+ */
+NODEDEF *leftRotate(NODEDEF *root, NODEDEF *node, NODEDEF *parent, int direction)
+{
+  // nodeを根として左回転を行う
+
+  NODEDEF *pivot;
+  NODEDEF *new_root;
+
+  TRACE("left_rotate:%d\n", node->key);
+
+  // 新しい根とするノードをpivotとして設定
+  pivot = node->right;
+
+  // 左回転
+  if (pivot != NULL) {
+	node->right = pivot->left;
+	pivot->left = node;
+  }
+
+  // parentもしくはrootに新しい根ノードを参照させる
+  if (parent == NULL) {
+	new_root = pivot;
+	return new_root;
+  }
+
+  // どちらの子に設定するかはdirectionから判断
+  if (direction == TREE_LEFT) {
+	parent->left = pivot;
+  } else {
+	parent->right = pivot;
+  }
+  return root;
+}
+// ***********************
+/*!
+ * @brief nodeを根とする部分木を回転（右）
+ * @param[out]	 root	根のノードを指すアドレス
+ * @param[out]	 node	回転する部分木の根ノードを指すアドレス
+ * @param[out]	 parent   nodeの親ノードを指すアドレス
+ * @param[in]	 direction	 parentから見たnodeのある方向
+ * @return	 根のノードを指すアドレス
+ */
+NODEDEF * rightRotate(NODEDEF *root, NODEDEF *node, NODEDEF *parent, int direction)
+{
+  // nodeを根として右回転を行う
+
+  NODEDEF *pivot;
+  NODEDEF *new_root;
+
+  TRACE("right_rotate:%d\n", node->key);
+
+  // 新しい根とするノードをpivotとして設定
+  pivot = node->left;
+
+  // 右回転
+  if (pivot != NULL) {
+	node->left = pivot->right;
+	pivot->right = node;
+  }
+
+  // parentもしくはrootに新しい根ノードを参照させる
+  if (parent == NULL) {
+	new_root = pivot;
+	return new_root;
+  }
+
+  // どちらの子に設定するかはdirectionから判断
+  if (direction == TREE_LEFT) {
+	parent->left = pivot;
+  } else {
+	parent->right = pivot;
+  }
+
+  return root;
+}
+// ***********************
+/*!
+ * @brief nodeを根とする部分木を二重回転（右->左）
+ * @param[out]	  root		 根のノードを指すアドレス
+ * @param[out]	  node		 回転する部分木の根ノードを指すアドレス
+ * @param[out]	  parent	 nodeの親ノードを指すアドレス
+ * @param[out]	  direction  parentから見たnodeのある方向
+ * @return	   根のノードを指すアドレス
+ */
+NODEDEF *rightLeftRotate(NODEDEF *root, NODEDEF *node, NODEDEF *parent, int direction) {
+  // ２重回転（Right Left Case）を行う
+
+  NODEDEF *new_root;
+  TRACE("right_left_rotate:%d\n", node->key);
+
+  // nodeの右の子ノードを根として右回転
+  new_root = rightRotate(root, node->right, node, TREE_RIGHT);
+
+  // nodeを根として左回転
+  return leftRotate(new_root, node, parent, direction);
+}
+// ***********************
+/*!
+ * @brief nodeを根する部分木を二重回転（左->右）
+ * @param[out]	  root		 根のノードを指すアドレス
+ * @param[out]	  node		 回転する部分木の根ノードを指すアドレス
+ * @param[out]	  parent	 nodeの親ノードを指すアドレス
+ * @param[out]	  direction  parentから見たnodeのある方向
+ * @return	   根のノードを指すアドレス
+ */
+NODEDEF * leftRightRotate(NODEDEF *root, NODEDEF *node, NODEDEF *parent, int direction) {
+  // ２重回転（Left Right Case）を行う
+
+  NODEDEF *new_root;
+
+  TRACE("left_right_rotate:%d\n", node->key);
+
+  // nodeの左の子ノードを根として左回転
+  new_root = leftRotate(root, node->left, node, TREE_LEFT);
+
+  // nodeを根として右回転
+  return rightRotate(new_root, node, parent, direction);
+}
+// ***********************
+/*!
+ * @brief nodeからbranchで辿ったノードを平衡にする
+ * @param[out]	 root	 根のノードを指すアドレス
+ * @param[out]	 node	 平衡にするノードを指すアドレス
+ * @param[out]	 parent  nodeの親ノードを指すアドレス
+ * @param[out]	 direction	 parentから見たnodeのある方向
+ * @param[out]	 branch 	 平衡化を行うノードへの経路
+ * @param[out]	 num_branch : branchに格納された経路の数
+ * @return	 根のノードを指すアドレス
+ */
+NODEDEF * balancing(NODEDEF *root, NODEDEF *node, NODEDEF *parent, int direction, int *branch, int num_branch) {
+
+  NODEDEF *next;
+  NODEDEF *new_root;
+
+  int left_height, right_height;
+  int balance;
+
+  if (node == NULL || root == NULL) {
+	return root;
+  }
+
+  if (num_branch > 0) {
+	// 辿れる場合はまず目的のノードまで辿る
+
+	// 辿る子ノードを設定
+	if (branch[0] == TREE_LEFT) {
+	  next = node->left;
+	} else {
+	  next = node->right;
+	}
+
+	// 子ノードを辿る
+	new_root = balancing(root, next, node, branch[0], &branch[1], num_branch - 1);
+  }
+	
+  // 平衡係数を計算
+  left_height = getHeight(node->left);
+  right_height = getHeight(node->right);
+  balance = right_height - left_height;
+  
+  if (balance > 1) {
+	// 右の部分木が高くて並行状態でない場合
+
+	// ２重回転が必要かどうかを判断
+	if (getHeight(node->right->left) > getHeight(node->right->right)) {
+	  // ２重回転（Right Left Case）
+	  return rightLeftRotate(new_root, node, parent, direction);
+
+	} else {
+	  //１重回転（左回転）
+	  return leftRotate(new_root, node, parent, direction);
+	}
+  
+  } else if (balance < -1) {
+	// 左の部分木が高くて並行状態でない場合
+
+	// ２重回転が必要かどうかを判断
+	if (getHeight(node->left->right) > getHeight(node->left->left)) {
+	  // ２重回転（Left Right Case）
+	  return leftRightRotate(new_root, node, parent, direction);
+	} else {
+	  // １重回転（右回転）
+	  return rightRotate(new_root, node, parent, direction);
+	}
+  }
+
+  return root;
+}
+// ***********************
+/*!
+ * @brief  二分探索木のノード全てを削除する
+ * @param[out] 根ノードのアドレス
+ * @return なし
+ */
+void deleteTree(NODEDEF *root)
+{
+  if(root == NULL){
+	return;
+  }
+
+  if(root->left != NULL){
+	deleteTree(root->left);
+  }
+  if(root->right != NULL){
+	deleteTree(root->right);
+  }
+
+  TRACE("free:%d(%s)\n", root->key, root->name);
+  free( root->data );
+  free(root);
+
+}
+// ***********************
+/*!
+ * @brief ノードの構造体のメモリを確保し、データを設定
+ * @param[in]	 key  追加する会員番号
+ * @param[in]	 name	 追加する会員の名前
+ * @return	  追加したノードのアドレス
+ */
+NODEDEF *mallocNode(int key, char *name)
+{
+  NODEDEF *add;
+
+  add = (NODEDEF*)malloc(sizeof(NODEDEF));
+  if(add == NULL){ 
+	return NULL;
+  }
+
+  add->left = NULL;
+  add->right = NULL;
+  add->key = key;
+  strcpy_malloc( &(add->data), name);
+
+  return add;
+}
+// ***********************
+/*!
+ * @brief 指定されたkeyとname持つノードを追加する
+ * @param[out]	 root	  根ノードのアドレス
+ * @param[in]	 key   追加する会員番号
+ * @param[in]	 name	  追加する会員の名前
+ * @return		根ノードのアドレス
+ */
+NODEDEF *addNode(NODEDEF *root, int key, char *name)
+{
+  NODEDEF *node;
+  int branch[MAX_HEIGHT] = {0};
+  int num_branch = 0;
+
+  // まだノードが一つもない場合
+  if(root == NULL){
+	// 根ノードとしてノードを追加
+	root = mallocNode(key, name);
+	if(root == NULL){
+	  fprintf( stderr, "malloc error\n");
+	  return NULL;
+	}
+	return root;
+  }
+
+  // 根ノードから順に追加する場所を探索
+  node = root;
+  while(1) {
+	if(key < node->key){
+	  // 追加する値がノードの値よりも小さい場合
+
+	  if(node->left == NULL){
+		// そのノードの左の子が無い場合（もう辿るべきノードが無い場合）
+
+		// その左の子の位置にノードを追加
+		node->left = mallocNode(key, name);
+
+		// 追加完了したので処理終了
+		break;
+	  }
+
+			  // 左ノードを辿ったことを覚えておく
+	  branch[num_branch] = TREE_LEFT;
+	  num_branch++;
+	  
+	  // 左の子がある場合は左の子を新たな注目ノードに設定
+	  node = node->left;
+
+	} else if(key > node->key){
+	  // 追加する値がノードの値よりも大きい場合
+
+	  if(node->right == NULL){
+		// そのノードの右の子が無い場合（もう辿るべきノードが無い場合）
+
+		// その右の子の位置にノードを追加
+		node->right = mallocNode(key, name);
+
+		// 追加完了したので処理終了
+		break;
+	  }
+
+	  // 右ノードを辿ったことを覚えておく
+	  branch[num_branch] = TREE_RIGHT;
+	  num_branch++;
+
+	  // 右の子がある場合は右の子を新たな注目ノードに設定
+	  node = node->right;
+	} else {
+	  // 追加する値とノードの値が同じ場合
+
+	  //fprintf( stderr, "%d already exist\n", key);
+	  return NULL;
+	  break;
+	}
+  }
+	
+  return balancing(root, root, NULL, 0, branch, num_branch);
+}
+
+// ***********************
+/*!
+ * @brief 指定されたkeyを持つノードを探索する
+ * @param[in]	 root	 探索を開始するノードのアドレス
+ * @param[in]	 key  探索する会員番号
+ * @return	  ノードのアドレス(存在しない場合は NULL)
+ */
+NODEDEF *searchNode(NODEDEF *root, int key){
+  NODEDEF *node;
+  
+  node = root;
+
+  // 探索を行うループ（注目ノードがNULLになったら終了
+  while(node){
+	if(key < node->key){
+	  // 探索値がノードの値よりも小さい場合
+
+	  // 注目ノードを左の子ノードに設定
+	  node = node->left;
+	} else if(key > node->key){
+	  // 探索値がノードの値よりも大きい場合
+
+	  // 注目ノードを右の子ノードに設定
+	  node = node->right;
+	} else {
+	  // 探索値 = ノードの値の場合
+	  return node;
+	}
+  }
+  
+  // 探索値を持つノードが見つからなかった場合
+  return NULL;
+}
+// ***********************
+/*!
+ * @brief	  指定された子の無いノードを削除する
+ * @param[out]	 root	 木の根ノードのアドレス
+ * @param[out]	 node	 削除するノードのアドレス
+ * @param[out]	 parent  削除するノードの親ノードのアドレス
+ * @return	根ノードのアドレス
+ */
+NODEDEF *deleteNoChildNode(NODEDEF *root, NODEDEF *node, NODEDEF *parent)
+{
+
+  if(parent != NULL){
+	// 親がいる場合（根ノード以外の場合）は
+	// 削除対象ノードを指すポインタをNULLに設定
+	if(parent->left ==	node){
+	   // 削除対象ノードが親ノードから見て左の子の場合
+		parent->left = NULL;
+	} else {
+	  // 削除対象ノードが親ノードから見て右の子の場合
+	  parent->right = NULL;
+	}
+	free(node);
+  }  else {
+	// 削除対象ノードが根ノードの場合
+	free(node);
+	  
+	// 根ノードを指すポインタをNULLに設定
+	root = NULL;
+  }
+	
+  return root;
+}
+// ***********************
+/*!
+ * @brief	 指定された子が一つのノードを削除する
+ * @param[out]	root   木の根ノードのアドレス
+ * @param[out]	node   削除するノードのアドレス
+ * @param[out]	child  削除するノードの子ノードのアドレス
+ * @return	根ノードのアドレス
+ */
+NODEDEF *deleteOneChildNode(NODEDEF *root, NODEDEF *node, NODEDEF * child)
+{
+   
+  // 削除対象ノードにその子ノードのデータとポインタをコピー
+  node->key = child->key;
+  strcpy_malloc( &node->data, child->data);
+  node->left = child->left;
+  node->right = child->right;
+	
+  // コピー元のノードを削除
+  free(child);
+  
+  return root;
+}
+// ***********************
+/*!
+ * @brief  指定された子が二つのノードを削除する
+ * @param[out]	 root  木の根ノードのアドレス
+ * @param[out]	 node  削除するノードのアドレス
+ * @return	根ノードのアドレス
+ */
+NODEDEF *deleteTwoChildNode(NODEDEF *root, NODEDEF *node, int *branch, int *num_branch){
+
+  NODEDEF *max;
+  NODEDEF *maxParent;
+  
+  // 左の子から一番大きい値を持つノードを探索
+  max = node->left;
+  maxParent = node;
+
+  // 左の子ノードを辿ったことを覚えておく
+  branch[*num_branch] = TREE_LEFT;
+  (*num_branch)++;
+	
+  while(max->right != NULL){
+	maxParent = max;
+	max = max->right;
+
+	// 右の子ノードを辿ったことを覚えておく
+	branch[*num_branch] = TREE_RIGHT;
+	(*num_branch)++;
+  }
+  printf("max key is %d\n", max->key);
+	
+  // 最大ノードのデータのみ削除対象ノードにコピー
+  node->key = max->key;
+  strcpy( &(node->data), max->data);
+	
+  // 最大ノードを削除
+  
+  // maxは最大ノードなので必ずmax->rightはNULLになる
+  if(max->left == NULL){
+	// 最大ノードに子がいない場合 */
+	root = deleteNoChildNode(root, max, maxParent);  
+	} else {
+	  // 最大ノードに子供が一ついる場合
+	  root = deleteOneChildNode(root, max, max->left);
+	}
+
+	return root;
+}
+// ***********************
+/*!
+ * @brief	指定されたkeyを持つノードを削除する
+ * @param[out]	 root	 木の根ノードのアドレス
+ * @param[out]	 key  削除する会員番号
+ * @return	根ノードのアドレス
+ */
+NODEDEF *deleteNode(NODEDEF *root, int key){
+  NODEDEF *node;
+  NODEDEF *parent;
+  int branch[MAX_HEIGHT] = {0};
+  int num_branch = 0;
+
+  if(root == NULL){
+	return NULL;
+  }
+
+  // 削除対象ノードを指すノードを探索
+  node = root;
+  parent = NULL;
+  
+  while(node !=  NULL){
+	if(key < node->key){
+	  parent = node;
+	  node = node->left;
+
+	  // 左の子ノードを辿ったことを覚えておく
+	  branch[num_branch] = TREE_LEFT;
+	  num_branch++;
+	} else if(key > node->key){
+	  parent = node;
+	  node = node->right;
+
+	  // 右の子ノードを辿ったことを覚えておく
+	  branch[num_branch] = TREE_RIGHT;
+	  num_branch++;
+	} else {
+	  break;
+	}
+  }
+  
+  // 指定されたkeyを値として持つノードが存在しない場合は何もせず終了
+  if(node == NULL){
+	TRACE("%d を持つノードが存在しません\n", key);
+	return root;
+  }
+
+  TRACE("Delete %d(%s) node\n", node->key, node->name);
+
+  if(node->left == NULL && node->right == NULL){	
+	// 子がいないノードの削除
+	root = deleteNoChildNode(root, node, parent);
+  } else if((node->left != NULL && node->right == NULL) ||
+	(node->right != NULL && node->left == NULL)){
+	// 子が一つしかない場合
+	
+	if(node->left != NULL){
+	  root = deleteOneChildNode(root, node, node->left);
+	} else {
+	  root = deleteOneChildNode(root, node, node->right);
+	}
+  } else {
+	// 左の子と右の子両方がいるノードの削除
+	root = deleteTwoChildNode(root, node, branch, &num_branch);
+  }
+  
+  return balancing(root, root, NULL, 0, branch, num_branch);
+}
+// ***********************
+/*!
+ * @brief  rootを根ノードとする二分探索木をの全ノードを表示する
+ * @param[out]	 root	木の根ノードのアドレス
+ * @param[out]	 depth: 関数呼び出しの深さ
+ * @return	  なし
+ */
+void printTree(NODEDEF *root, int depth){
+  int i;
+
+  if(root == NULL){
+	return ;
+  }
+
+  // 右の子孫ノードを表示
+  printTree(root->right, depth+1);
+ 
+  // 深さをスペースで表現 
+  for(i = 0; i < depth; i++){
+	printf("    ");
+  }
+
+  // ノードのデータを表示
+  printf("+%3d(%s)\n", root->key, root->data);
+
+  // 左の子孫ノードを表示
+  printTree(root->left, depth+1);
+
+  depth++;
+}
+// ***********************
+// ***********************
+int main(void){
+	char str[INPBUF];
+	NODEDEF	*root,*retp;
+	int i,num;
+	int query;
+
+	// init
+	root = NULL;
+	// ready
+	INPUT(str);
+	sscanf( str , "%d", &query );
+	// start
+	FLOOP(i,query) {
+		getinput(str);
+		sscanf( str , "%d", &num );
+		retp = addNode( root, num , "dummy" );
+		if( i ) {
+			if( retp == NULL ) {
+				printf("Yes\n");
+			} else {
+				printf("No\n");
+				root = retp;
+			}
+		} else {
+			root = retp;
+		}
+	}
+	// 取得した値を標準出力するために"XXXXXX"をどう書き換える？
+	//printTree( root , 0 );
+	deleteTree( root );
+	return 0;
+}

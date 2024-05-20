@@ -1,0 +1,264 @@
+/*
+あなたは今、「mod7占い」というサービスを始めようと考えています。
+
+mod7占いとは、整数が書かれた複数のカードの中から3枚を選び、そこに書かれた整数の和が7で割り切れるかどうかで運勢を決めようというものです。 カードは必ず異なる3枚を選ぶ必要があり、全てのカードには全て異なる数字が書かれています。
+
+占いというからには、7で割り切れる組み合わせはそれなりに少なくする必要があります。 そこで、適当な複数のカードに対して、カードに書かれた3つの整数を足した和が7で割り切れるような組合せがいくつあるかを計算するプログラムを作成してください。
+
+入力される値
+入力は以下のフォーマットで与えられます。
+
+N
+a_1
+a_2
+...
+a_N
+
+N は与えられるカードの枚数を表します。
+
+a_i (1 ≦ i ≦ N) はi 枚目のカードに書かれた整数であり、スペース改行区切りでN 個与えられます。
+入力値最終行の末尾に改行が１つ入ります。
+文字列は標準入力から渡されます。 
+
+期待する出力
+組合せ数を一行に出力してください。
+
+最後は改行し、余計な文字、空行を含んではいけません。
+条件
+すべてのテストケースにおいて、以下の条件をみたします。
+
+1 ≦ N ≦ 100000
+
+0 ≦ a_i < 2^32
+入力例1
+3
+10
+4
+14
+出力例1
+1
+入力例2
+10
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+出力例2
+17
+*/
+//  アルゴリズム１
+// 全部の数を覚えて
+// 全部の組み合わせを愚直に試算する
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define    DEBUG2
+
+
+#ifdef DEBUG
+    #define    TRACE(...)    printf(__VA_ARGS__)
+    #define     TRACECR     printf("\n")
+#else
+    #define     NOP        do{}while(0)
+    #define    TRACE(...)    NOP
+    #define     TRACECR    NOP
+#endif
+#define    NOCR(strig)    do{char *p;p=strchr(strig,'\n');if(p)*p='\0';}while(0)
+#define    swap(type,a,b) do{type _c;_c=a;a=b;b=_c;}while(0)
+
+
+// ***********************
+#define    MAXCARDS        100000
+// ***********************
+long    Cards[MAXCARDS];
+int        used[MAXCARDS];
+long    select[3];
+// ***********************
+static  long    hascards;    // 最大数
+static    long    mituketa;
+// ***********************
+// ***********************
+// ***********************
+static    void    kumiawase( int num , long start) {
+    long    li;
+    if(num==3) {
+        TRACE("%ld,%ld,%ld ",select[0],select[1],select[2] );
+        if( (select[0]+select[1]+select[2])%7 == 0 ) {
+            mituketa++;
+            TRACE("o\n");
+        } else {
+            //TRACE("x\n");
+        }
+    } else {
+        for(li=start;li<hascards;li++) {
+            if(!used[li]) {
+                used[li]=1;
+                select[num]= Cards[li];
+                kumiawase(num+1, li+1 );
+                used[li]=0;
+            }
+        }
+    }
+}
+// ***********************
+int main(void){
+    char    str[20];
+    long    li,num;
+
+
+    fgets(str, sizeof(str), stdin);
+    //TRACE("Get[%s]",str);
+    sscanf( str , "%ld", &hascards );
+    TRACE("全部で%ld枚 \n", hascards);
+    /*
+    hascards = 10;
+    */
+    for( li = 0; li < hascards ; li++ ) {
+        fgets(str, sizeof(str), stdin);
+        //TRACE("Get[%s]",str);
+        sscanf( str, "%ld", &num );
+        Cards[li] = num;
+        //TRACE("%ld枚枚目%ld\n", li, num);
+    }
+    /*
+    Cards[0] = 1;
+    Cards[1] = 2;
+    Cards[2] = 3;
+    Cards[3] = 4;
+    Cards[4] = 5;
+    Cards[5] = 6;
+    Cards[6] = 7;
+    Cards[7] = 8;
+    Cards[8] = 9;
+    Cards[9] = 10;
+    */
+    for( li = 0; li < hascards ; li++ ) {
+        used[li] = 0;
+    }
+    mituketa = 0;
+    kumiawase(0,0);
+    printf("%ld", mituketa );
+
+
+    return 0;
+}
+// 激遅
+// 正解だけど遅い！
+//
+// アルゴリズム２　高速化
+// ７の余りの数８種類がいくつあるかだけを覚える
+// ７で割れる組み合わせの12種類を全て加算する
+// （000,016,025,034,115,124,133,223,266,356,446,554）
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define    DEBUG2
+
+
+#ifdef DEBUG
+    #define    TRACE(...)    printf(__VA_ARGS__)
+    #define     TRACECR     printf("\n")
+#else
+    #define     NOP        do{}while(0)
+    #define    TRACE(...)    NOP
+    #define     TRACECR    NOP
+#endif
+#define    NOCR(strig)    do{char *p;p=strchr(strig,'\n');if(p)*p='\0';}while(0)
+#define    swap(type,a,b) do{type _c;_c=a;a=b;b=_c;}while(0)
+
+
+// ***********************
+#define    MAXCARDS        100000
+// ***********************
+long    hCards[7];
+// ***********************
+static  long    hascards;    // 最大数
+static  long    mituketa;
+// ***********************
+// ***********************
+// ***********************
+// ***********************
+long tasujo(long n) {
+    int result = 0;
+    long k;
+
+
+    for(k = 1; k < n; k++) {
+        result += k;
+    }
+    return result;
+}
+// ***********************
+// ***********************
+int main(void){
+    char    str[20];
+    long    li,num;
+
+
+    fgets(str, sizeof(str), stdin);
+    //TRACE("Get[%s]",str);
+    sscanf( str , "%ld", &hascards );
+    TRACE("全部で%ld枚 \n", hascards);
+    for( li = 0; li < 7 ; li++ ) {
+        hCards[li] = 0;
+    }
+    for( li = 0; li < hascards ; li++ ) {
+        fgets(str, sizeof(str), stdin);
+        //TRACE("Get[%s]",str);
+        sscanf( str, "%ld", &num );
+        //Cards[li] = num;
+        //Cards[ li ] = num % 7;    // データを保持しないという暴挙
+        hCards[num % 7]++;    // データを保持しないという暴挙
+        //TRACE("%ld枚枚目%ld\n", li, num);
+    }
+
+
+    for( li = 0; li < 7 ; li++ ) {
+        TRACE("%d=%ld枚\n",li,hCards[li]);
+    }
+
+
+    // ありえる組み合わせ数を個別に加算
+    // --------
+    mituketa = 0;
+    // 0 0 0
+    if(hCards[0] > 2 ) mituketa =  hCards[0] * (hCards[0]-1)*(hCards[0]-2)/6;
+    
+    // 0 1 6
+    mituketa += hCards[0] * hCards[1] * hCards[6];
+    // 0 2 5
+    mituketa += hCards[0] * hCards[2] * hCards[5];
+    // 0 3 4
+    mituketa += hCards[0] * hCards[3] * hCards[4];
+    // --------
+    // 1 1 5
+    if( hCards[1] >1 ) mituketa += hCards[1]*(hCards[1]-1)*hCards[5]/2;
+    // 1 2 4
+    mituketa += hCards[1] * hCards[2] * hCards[4];
+    // 1 3 3
+    if( hCards[3] >1 ) mituketa += hCards[3]*(hCards[3]-1)*hCards[1]/2;
+    // 2 2 3
+    if( hCards[2] >1 ) mituketa += hCards[2]*(hCards[2]-1)*hCards[3]/2;
+    // --------
+    // 2 6 6
+    if( hCards[6] >1 ) mituketa += hCards[6]*(hCards[6]-1)*hCards[2]/2;
+    // 3 5 6
+    mituketa += hCards[6] * hCards[5] * hCards[3];
+    // 4 4 6
+    if( hCards[4] >1 ) mituketa += hCards[4]*(hCards[4]-1)*hCards[6]/2;
+    // 5 5 4
+    if( hCards[5] >1 ) mituketa += hCards[5]*(hCards[5]-1)*hCards[4]/2;
+
+
+    printf("%ld\n", mituketa );
+
+
+    return 0;
+}
+// 超高速！ 一瞬で結果が出る
